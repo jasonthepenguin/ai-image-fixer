@@ -248,12 +248,55 @@ function Slider({ label, min, max, step = 1, value, defaultValue, onChange }: Sl
   const displayValue = Number.isFinite(value)
     ? (step < 1 ? Math.round(value * (1 / step)) / (1 / step) : Math.round(value))
     : 0;
+
+  const [inputStr, setInputStr] = React.useState<string>(String(displayValue));
+
+  // Keep the text input in sync when external value changes
+  React.useEffect(() => {
+    setInputStr(String(displayValue));
+  }, [displayValue]);
+
+  const commit = React.useCallback((raw: string) => {
+    const n = parseFloat(raw);
+    if (Number.isNaN(n)) {
+      // Revert to current value on invalid input
+      setInputStr(String(displayValue));
+      return;
+    }
+    let v = n;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    onChange(v);
+    setInputStr(String(step < 1 ? Math.round(v * (1 / step)) / (1 / step) : Math.round(v)));
+  }, [min, max, onChange, step, displayValue]);
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
         <label className="text-sm select-none">{label}</label>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-600 tabular-nums min-w-8 text-right">{displayValue}</span>
+          <input
+            type="number"
+            inputMode={step < 1 ? 'decimal' : 'numeric'}
+            step={step}
+            min={min}
+            max={max}
+            value={inputStr}
+            onChange={(e) => {
+              const s = e.target.value;
+              setInputStr(s);
+              const n = parseFloat(s);
+              if (!Number.isNaN(n)) {
+                let v = n;
+                if (v < min) v = min;
+                if (v > max) v = max;
+                onChange(v);
+              }
+            }}
+            onBlur={(e) => commit(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
+            className="text-xs leading-none px-1.5 py-0.5 w-12 rounded border border-gray-300 text-right"
+            aria-label={`${label} numeric input`}
+          />
           <button
             type="button"
             title="Reset to default"
