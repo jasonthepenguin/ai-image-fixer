@@ -65,6 +65,7 @@ This document summarizes the current state of the codebase.
   - Visible canvas receives processed `ImageData` via `putImageData`.
 
 - Controls
+  - Zoom controls in the tools panel: Zoom Out (−), Zoom In (+), 100% (actual size), and Fit (auto-fit to container). Zoom ranges 10%–800%, with auto-fit on new image load and window resize.
   - Sliders with numeric inputs (narrow width, Tailwind `w-12`), min/max/step enforced, reset to defaults.
   - Auto White Balance checkbox toggle.
 
@@ -80,6 +81,7 @@ This document summarizes the current state of the codebase.
 
 ## Recent Changes
 
+- Added zoom controls with auto-fit to container and +/- buttons in the image viewer.
 - Added numeric inputs to each slider control to allow typing exact values.
 - Reduced numeric input width to be more compact (Tailwind class `w-12`).
 
@@ -91,4 +93,3 @@ This document summarizes the current state of the codebase.
   - Keyboard nudge for focused sliders/inputs.
   - Persist last-used settings in localStorage.
   - GPU acceleration via WebGL/WebGPU for heavy blurs.
-

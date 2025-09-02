@@ -31,12 +31,21 @@ export default function ImageEditor() {
   const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null);
   const [working, setWorking] = useState(false);
 
+  // Zoom state and container ref for fit-to-view calculations
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
+  const [fitZoom, setFitZoom] = useState<number>(1);
+  const [autoFit, setAutoFit] = useState<boolean>(true);
+
+  const clampZoom = useCallback((z: number) => Math.min(8, Math.max(0.1, z)), []);
+
   // Load image into offscreen canvas
   const loadImage = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) return;
     const url = URL.createObjectURL(file);
     setImageURL(url);
     setFileName(file.name);
+    setAutoFit(true);
   }, []);
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -56,6 +65,9 @@ export default function ImageEditor() {
     setFileName(null);
     setAdj(defaultAdj);
     setImgDims(null);
+    setZoom(1);
+    setFitZoom(1);
+    setAutoFit(true);
   }, []);
 
   // Draw the source image to an offscreen canvas (downscale if large)
@@ -123,6 +135,23 @@ export default function ImageEditor() {
 
   const hasImage = useMemo(() => !!imgDims, [imgDims]);
 
+  // Compute fit-to-container zoom whenever dimensions or container size change
+  useEffect(() => {
+    if (!hasImage || !imgDims) return;
+    const calcFit = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const { clientWidth, clientHeight } = el;
+      const z = Math.min(clientWidth / imgDims.w, clientHeight / imgDims.h, 1);
+      setFitZoom(z);
+      if (autoFit) setZoom(z);
+    };
+    calcFit();
+    const onResize = () => calcFit();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [hasImage, imgDims, autoFit]);
+
   return (
     <div className="min-h-screen w-full bg-gray-50 text-gray-900 flex items-center justify-center">
       <div className="mx-auto max-w-6xl p-4 w-full">
@@ -133,10 +162,16 @@ export default function ImageEditor() {
             <div
               onDrop={onDrop}
               onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-              className="bg-white rounded-lg shadow p-3 flex items-center justify-center overflow-auto min-h-[300px]"
+              ref={containerRef}
+              className={`bg-white rounded-lg shadow p-3 overflow-auto min-h-[300px] relative ${hasImage ? 'flex items-start justify-start' : 'flex items-center justify-center'}`}
             >
               {hasImage ? (
-                <canvas ref={canvasRef} className="max-w-full h-auto" />
+                <div
+                  className="shrink-0"
+                  style={{ width: imgDims ? `${imgDims.w * zoom}px` : undefined, height: imgDims ? `${imgDims.h * zoom}px` : undefined }}
+                >
+                  <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+                </div>
               ) : (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-10 w-full h-full flex flex-col items-center justify-center hover:border-blue-400 transition-colors">
                   <p className="mb-3">Drag and drop an image here</p>
@@ -161,6 +196,53 @@ export default function ImageEditor() {
                 <button className="text-sm px-2 py-1 rounded border" onClick={reset} disabled={!hasImage}>
                   Reset
                 </button>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Zoom</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-50"
+                      onClick={() => { setAutoFit(false); setZoom(z => clampZoom(z - 0.1)); }}
+                      title="Zoom out"
+                      disabled={!hasImage}
+                    >
+                      −
+                    </button>
+                    <span className="text-xs tabular-nums px-1 w-14 text-center">{Math.round(zoom * 100)}%</span>
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-50"
+                      onClick={() => { setAutoFit(false); setZoom(z => clampZoom(z + 0.1)); }}
+                      title="Zoom in"
+                      disabled={!hasImage}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50"
+                    onClick={() => { setAutoFit(false); setZoom(1); }}
+                    title="Actual size (100%)"
+                    disabled={!hasImage}
+                  >
+                    100%
+                  </button>
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50"
+                    onClick={() => { setAutoFit(true); setZoom(fitZoom); }}
+                    title="Fit to view"
+                    disabled={!hasImage}
+                  >
+                    Fit
+                  </button>
+                </div>
               </div>
 
               <label className="flex items-center gap-2">
