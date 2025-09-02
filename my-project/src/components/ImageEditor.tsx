@@ -124,110 +124,110 @@ export default function ImageEditor() {
   const hasImage = useMemo(() => !!imgDims, [imgDims]);
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 text-gray-900">
-      <div className="mx-auto max-w-6xl p-4">
-        <h1 className="text-2xl font-semibold mb-4">Simple Image Editor</h1>
+    <div className="min-h-screen w-full bg-gray-50 text-gray-900 flex items-center justify-center">
+      <div className="mx-auto max-w-6xl p-4 w-full">
+        <h1 className="text-2xl font-semibold mb-6 text-center">Jason's Image Gen Fixer</h1>
 
-        {!hasImage && (
-          <div
-            onDrop={onDrop}
-            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-10 flex flex-col items-center justify-center bg-white hover:border-blue-400 transition-colors"
-          >
-            <p className="mb-3">Drag and drop an image here</p>
-            <button
-              className="px-3 py-2 rounded bg-blue-600 text-white"
-              onClick={() => fileInputRef.current?.click()}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+          <div className="md:col-span-8">
+            <div
+              onDrop={onDrop}
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+              className="bg-white rounded-lg shadow p-3 flex items-center justify-center overflow-auto min-h-[300px]"
             >
-              Browse Files
-            </button>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onInputFile} />
-          </div>
-        )}
-
-        {hasImage && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className="md:col-span-8">
-              <div className="bg-white rounded-lg shadow p-3 flex items-center justify-center overflow-auto">
+              {hasImage ? (
                 <canvas ref={canvasRef} className="max-w-full h-auto" />
-              </div>
-            </div>
-            <div className="md:col-span-4">
-              <div className="bg-white rounded-lg shadow p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="truncate">
-                    <p className="font-medium">{fileName}</p>
-                    <p className="text-xs text-gray-500">{imgDims?.w}×{imgDims?.h}px</p>
-                  </div>
-                  <button className="text-sm px-2 py-1 rounded border" onClick={reset}>Reset</button>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-10 w-full h-full flex flex-col items-center justify-center hover:border-blue-400 transition-colors">
+                  <p className="mb-3">Drag and drop an image here</p>
+                  <button
+                    className="px-3 py-2 rounded bg-blue-600 text-white"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Browse Files
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onInputFile} />
                 </div>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="size-4"
-                    checked={adj.autoWhiteBalance}
-                    onChange={(e) => setAdj(a => ({ ...a, autoWhiteBalance: e.target.checked }))}
-                  />
-                  <span className="font-medium">Auto White Balance</span>
-                </label>
-
-                <Slider
-                  label="Gaussian Blur (px)"
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  value={adj.blurPx}
-                  defaultValue={0}
-                  onChange={(v) => setAdj(a => ({ ...a, blurPx: v }))}
-                />
-
-                <Slider
-                  label="Noise (σ)"
-                  min={0}
-                  max={50}
-                  step={1}
-                  value={adj.noiseSigma}
-                  defaultValue={0}
-                  onChange={(v) => setAdj(a => ({ ...a, noiseSigma: v }))}
-                />
-
-                <div className="pt-2 border-t">
-                  <p className="font-medium mb-2">Color Enhancement</p>
-                  <Slider
-                    label="Brightness (%)"
-                    min={-100}
-                    max={100}
-                    step={1}
-                    value={adj.brightness}
-                    defaultValue={0}
-                    onChange={(v) => setAdj(a => ({ ...a, brightness: v }))}
-                  />
-                  <Slider
-                    label="Contrast (%)"
-                    min={-100}
-                    max={100}
-                    step={1}
-                    value={adj.contrast}
-                    defaultValue={0}
-                    onChange={(v) => setAdj(a => ({ ...a, contrast: v }))}
-                  />
-                  <Slider
-                    label="Saturation (%)"
-                    min={-100}
-                    max={100}
-                    step={1}
-                    value={adj.saturation}
-                    defaultValue={0}
-                    onChange={(v) => setAdj(a => ({ ...a, saturation: v }))}
-                  />
-                </div>
-
-                {working && <p className="text-xs text-gray-500">Processing…</p>}
-              </div>
+              )}
             </div>
           </div>
-        )}
+          <div className="md:col-span-4">
+            <div className="bg-white rounded-lg shadow p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="truncate">
+                  <p className="font-medium">{fileName ?? 'No image loaded'}</p>
+                  <p className="text-xs text-gray-500">{hasImage ? `${imgDims?.w}×${imgDims?.h}px` : 'Drop or browse an image'}</p>
+                </div>
+                <button className="text-sm px-2 py-1 rounded border" onClick={reset} disabled={!hasImage}>
+                  Reset
+                </button>
+              </div>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={adj.autoWhiteBalance}
+                  onChange={(e) => setAdj(a => ({ ...a, autoWhiteBalance: e.target.checked }))}
+                />
+                <span className="font-medium">Auto White Balance</span>
+              </label>
+
+              <Slider
+                label="Gaussian Blur (px)"
+                min={0}
+                max={10}
+                step={0.1}
+                value={adj.blurPx}
+                defaultValue={0}
+                onChange={(v) => setAdj(a => ({ ...a, blurPx: v }))}
+              />
+
+              <Slider
+                label="Noise (σ)"
+                min={0}
+                max={50}
+                step={1}
+                value={adj.noiseSigma}
+                defaultValue={0}
+                onChange={(v) => setAdj(a => ({ ...a, noiseSigma: v }))}
+              />
+
+              <div className="pt-2 border-t">
+                <p className="font-medium mb-2">Color Enhancement</p>
+                <Slider
+                  label="Brightness (%)"
+                  min={-100}
+                  max={100}
+                  step={1}
+                  value={adj.brightness}
+                  defaultValue={0}
+                  onChange={(v) => setAdj(a => ({ ...a, brightness: v }))}
+                />
+                <Slider
+                  label="Contrast (%)"
+                  min={-100}
+                  max={100}
+                  step={1}
+                  value={adj.contrast}
+                  defaultValue={0}
+                  onChange={(v) => setAdj(a => ({ ...a, contrast: v }))}
+                />
+                <Slider
+                  label="Saturation (%)"
+                  min={-100}
+                  max={100}
+                  step={1}
+                  value={adj.saturation}
+                  defaultValue={0}
+                  onChange={(v) => setAdj(a => ({ ...a, saturation: v }))}
+                />
+              </div>
+
+              {working && <p className="text-xs text-gray-500">Processing…</p>}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
