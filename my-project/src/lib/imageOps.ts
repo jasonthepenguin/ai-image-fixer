@@ -6,6 +6,7 @@
 
 export type Adjustments = {
   autoWhiteBalance: boolean;
+  autoColorEnhance: boolean;
   noiseSigma: number; // 0..50
   blurPx: number; // 0..10
   brightness: number; // -100..100 (%)
@@ -183,6 +184,84 @@ export function applySaturation(data: ImageData, saturationPct: number): ImageDa
   return out;
 }
 
+// HSV helpers (GIMP-like Color Enhance operates in HSV)
+function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const v = max;
+  const d = max - min;
+  const s = max === 0 ? 0 : d / max;
+  let h = 0;
+  if (d !== 0) {
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return [h, s, v];
+}
+
+function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
+  let r = 0, g = 0, b = 0;
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+  }
+  return [r * 255, g * 255, b * 255];
+}
+
+// Auto Color Enhance (GIMP-like): globally stretch HSV saturation to full range.
+// We compute a histogram of S over the image, optionally clip low/high percentiles
+// to avoid outliers, then linearly map S to [0,1] using those bounds.
+export function applyAutoColorEnhance(data: ImageData, clipPct = 0.005): ImageData {
+  const { width, height } = data;
+  const src = data.data;
+  const npx = width * height;
+  if (npx === 0) return data;
+
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < src.length; i += 4) {
+    const r = src[i], g = src[i + 1], b = src[i + 2];
+    const s = rgbToHsv(r, g, b)[1];
+    const bin = Math.max(0, Math.min(255, Math.round(s * 255)));
+    hist[bin]++;
+  }
+
+  const clipN = Math.max(0, Math.min(npx - 1, Math.round(npx * clipPct)));
+  let acc = 0; let sLoBin = 0; let sHiBin = 255;
+  for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc > clipN) { sLoBin = i; break; } }
+  acc = 0; for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc > clipN) { sHiBin = i; break; } }
+  if (sHiBin <= sLoBin) return data; // nothing to stretch
+
+  const sLo = sLoBin / 255;
+  const sHi = sHiBin / 255;
+  const scale = 1 / (sHi - sLo);
+
+  const out = new ImageData(width, height);
+  const dst = out.data;
+  for (let i = 0; i < src.length; i += 4) {
+    const r = src[i], g = src[i + 1], b = src[i + 2];
+    const a = src[i + 3];
+    let [h, s, v] = rgbToHsv(r, g, b);
+    s = (s - sLo) * scale;
+    if (s < 0) s = 0; else if (s > 1) s = 1;
+    const [nr, ng, nb] = hsvToRgb(h, s, v);
+    dst[i] = clamp(nr); dst[i + 1] = clamp(ng); dst[i + 2] = clamp(nb); dst[i + 3] = a;
+  }
+  return out;
+}
+
 // Gaussian blur via separable convolution
 function makeGaussianKernel(sigma: number): { kernel: Float32Array; radius: number } {
   if (sigma <= 0.1) return { kernel: new Float32Array([1]), radius: 0 };
@@ -256,6 +335,7 @@ export function applyGaussianBlur(data: ImageData, sigmaPx: number): ImageData {
 export function applyPipeline(input: ImageData, adj: Adjustments): ImageData {
   let img = input;
   if (adj.autoWhiteBalance) img = applyAutoWhiteBalance(img);
+  if (adj.autoColorEnhance) img = applyAutoColorEnhance(img);
   if (adj.noiseSigma > 0) img = applyGaussianNoise(img, adj.noiseSigma);
   if (adj.brightness !== 0 || adj.contrast !== 0) img = applyBrightnessContrast(img, adj.brightness, adj.contrast);
   if (adj.saturation !== 0) img = applySaturation(img, adj.saturation);

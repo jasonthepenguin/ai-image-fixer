@@ -29,7 +29,7 @@ This document summarizes the current state of the codebase.
   - Dimensions are shown alongside the filename.
 
 - Adjustments UI
-  - Controls: Auto White Balance (checkbox), Gaussian Blur, Noise (sigma), Brightness, Contrast, Saturation (all via slider + numeric input).
+  - Controls: Auto White Balance (checkbox), Auto Color Enhance (checkbox), Gaussian Blur, Noise (sigma), Brightness, Contrast, Saturation (all via slider + numeric input).
   - Numeric inputs are synchronized with sliders, constrained by min/max/step, and commit on blur/Enter.
   - Sliders include a reset button to return to default values.
   - A small “Processing…” indicator shows while applying changes.
@@ -41,18 +41,19 @@ This document summarizes the current state of the codebase.
 ## Image Processing Library (`src/lib/imageOps.ts`)
 
 - Types
-  - `Adjustments`: `{ autoWhiteBalance, noiseSigma, blurPx, brightness, contrast, saturation }`.
+  - `Adjustments`: `{ autoWhiteBalance, autoColorEnhance, noiseSigma, blurPx, brightness, contrast, saturation }`.
   - Utility: `clamp` to bound channels 0–255.
 
 - Operations
   - `applyAutoWhiteBalance`: Per-channel auto-level with ~0.5% histogram clipping (gray-world-ish outcome), computed via LUTs.
+  - `applyAutoColorEnhance`: GIMP-like global saturation stretch in HSV. Builds a histogram of saturation `S` for the whole image, finds low/high bounds using ~0.5% percentile clipping, then linearly remaps `S` to fill [0,1] while keeping hue `H` and value `V` unchanged. This enhances color similarly to GIMP’s Colors → Auto → Color Enhance.
   - `applyGaussianNoise`: Adds Box–Muller Gaussian noise per RGB channel (`sigma` in 0–50 typical range).
   - `applyBrightnessContrast`: Standard brightness offset and contrast factor (centering around 128).
   - `applySaturation`: RGB↔HSL conversion, scales saturation by a factor, then converts back.
   - `applyGaussianBlur`: Separable Gaussian blur using a normalized kernel with radius ≈ `ceil(σ*3)`; horizontal + vertical passes.
 
 - Pipeline
-  - `applyPipeline(input, adj)`: Applies in order: Auto WB → Noise → Brightness/Contrast → Saturation → Blur.
+  - `applyPipeline(input, adj)`: Applies in order: Auto WB → Auto Color Enhance → Noise → Brightness/Contrast → Saturation → Blur.
 
 ## UI Component Details (`src/components/ImageEditor.tsx`)
 

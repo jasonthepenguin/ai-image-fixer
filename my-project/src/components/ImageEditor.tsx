@@ -4,6 +4,7 @@ import { applyPipeline } from '../lib/imageOps';
 
 const defaultAdj: Adjustments = {
   autoWhiteBalance: false,
+  autoColorEnhance: false,
   noiseSigma: 0,
   blurPx: 0,
   brightness: 0,
@@ -253,6 +254,16 @@ export default function ImageEditor() {
                   onChange={(e) => setAdj(a => ({ ...a, autoWhiteBalance: e.target.checked }))}
                 />
                 <span className="font-medium">Auto White Balance</span>
+              </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={adj.autoColorEnhance}
+                  onChange={(e) => setAdj(a => ({ ...a, autoColorEnhance: e.target.checked }))}
+                />
+                <span className="font-medium">Auto Color Enhance</span>
               </label>
 
               <Slider
