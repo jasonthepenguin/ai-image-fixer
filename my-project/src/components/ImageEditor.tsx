@@ -31,6 +31,7 @@ export default function ImageEditor() {
   const srcCanvasRef = useRef<HTMLCanvasElement | null>(null); // stores original (possibly downscaled)
   const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null);
   const [working, setWorking] = useState(false);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   // Zoom state and container ref for fit-to-view calculations
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -70,6 +71,36 @@ export default function ImageEditor() {
     setFitZoom(1);
     setAutoFit(true);
   }, []);
+
+  const copyToClipboard = useCallback(async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try {
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Failed generating image blob');
+      const ClipboardItemCtor = (window as any).ClipboardItem;
+      if (!navigator.clipboard || !ClipboardItemCtor) throw new Error('Image clipboard not supported');
+      const item = new ClipboardItemCtor({ [blob.type]: blob });
+      await navigator.clipboard.write([item]);
+      setActionMsg('Copied image to clipboard');
+    } catch (e: any) {
+      setActionMsg(e?.message ? `Copy failed: ${e.message}` : 'Copy failed');
+    } finally {
+      setTimeout(() => setActionMsg(null), 2000);
+    }
+  }, []);
+
+  const downloadImage = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement('a');
+    const base = fileName ? fileName.replace(/\.[^.]+$/, '') : 'image';
+    link.download = `${base}-enhanced.png`;
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [fileName]);
 
   // Draw the source image to an offscreen canvas (downscale if large)
   useEffect(() => {
@@ -189,14 +220,11 @@ export default function ImageEditor() {
           </div>
           <div className="md:col-span-4">
             <div className="bg-white rounded-lg shadow p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="truncate">
+              <div className="flex flex-col gap-1">
+                <div className="truncate min-w-0">
                   <p className="font-medium">{fileName ?? 'No image loaded'}</p>
                   <p className="text-xs text-gray-500">{hasImage ? `${imgDims?.w}×${imgDims?.h}px` : 'Drop or browse an image'}</p>
                 </div>
-                <button className="text-sm px-2 py-1 rounded border" onClick={reset} disabled={!hasImage}>
-                  Reset
-                </button>
               </div>
 
               <div className="flex flex-col gap-1">
@@ -317,7 +345,37 @@ export default function ImageEditor() {
                 />
               </div>
 
-              {working && <p className="text-xs text-gray-500">Processing…</p>}
+              <div className="flex items-center justify-between">
+                {working && <p className="text-xs text-gray-500">Processing…</p>}
+                {actionMsg && <p className="text-xs text-gray-600">{actionMsg}</p>}
+              </div>
+
+              <div className="pt-2 border-t">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium">Actions</p>
+                  <button className="text-sm px-2 py-1 rounded border" onClick={reset} disabled={!hasImage}>
+                    Reset
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                    onClick={copyToClipboard}
+                    disabled={!hasImage || working}
+                    title="Copy processed image to clipboard"
+                  >
+                    Copy to Clipboard
+                  </button>
+                  <button
+                    className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                    onClick={downloadImage}
+                    disabled={!hasImage || working}
+                    title="Download processed image as PNG"
+                  >
+                    Download PNG
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

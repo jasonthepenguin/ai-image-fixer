@@ -33,6 +33,7 @@ This document summarizes the current state of the codebase.
   - Numeric inputs are synchronized with sliders, constrained by min/max/step, and commit on blur/Enter.
   - Sliders include a reset button to return to default values.
   - A small “Processing…” indicator shows while applying changes.
+  - Actions: Copy (copies processed image to clipboard via Clipboard API), Download (saves processed image as PNG at canvas resolution).
 
 - Processing Flow
   - Debounced adjustments (~60–80ms) to avoid frequent re-renders while dragging.
@@ -68,7 +69,8 @@ This document summarizes the current state of the codebase.
 - Controls
   - Zoom controls in the tools panel: Zoom Out (−), Zoom In (+), 100% (actual size), and Fit (auto-fit to container). Zoom ranges 10%–800%, with auto-fit on new image load and window resize.
   - Sliders with numeric inputs (narrow width, Tailwind `w-12`), min/max/step enforced, reset to defaults.
-  - Auto White Balance checkbox toggle.
+  - Auto White Balance and Auto Color Enhance toggles.
+  - Copy to Clipboard and Download buttons beside Reset; disabled while processing.
 
 ## Tooling & Scripts
 
@@ -85,6 +87,7 @@ This document summarizes the current state of the codebase.
 - Added zoom controls with auto-fit to container and +/- buttons in the image viewer.
 - Added numeric inputs to each slider control to allow typing exact values.
 - Reduced numeric input width to be more compact (Tailwind class `w-12`).
+- Added Copy to Clipboard and Download buttons for the processed canvas.
 
 ## Notes & Potential Next Steps
 
